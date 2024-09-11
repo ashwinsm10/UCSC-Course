@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "my-react-native-app",
-    "slug": "my-react-native-app",
+    "name": "UCSC Course",
+    "slug": "UCSC-Course",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

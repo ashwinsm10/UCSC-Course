@@ -33,3 +33,26 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+
+# IDE/Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Build and Distribution
+build/
+dist/
+
+# OS Specific
+*.suo
+*.ntvs_analysis.dat
+*.history
