@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, StyleSheet } from "react-native";
 import axios from "axios";
-import { COLORS } from "../Colors";
+import { COLORS } from "../colors/Colors";
 
 const API_URL = "http://192.168.0.198:5001/api/courses";
 
@@ -69,7 +69,7 @@ export const CourseListScreen = ({ navigation, route }) => {
       ) : (
         <FlatList
   data={courses}
-  keyExtractor={(item) => item.code} // Use item.code as the key
+  keyExtractor={(item) => item.code} 
   renderItem={({ item, index }) => (
     <TouchableOpacity
       style={styles.courseItem}

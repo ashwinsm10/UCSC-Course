@@ -2,9 +2,9 @@ import React from "react"
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { ClassSearchScreen, GESearchScreen, MainScreen } from "./components/HomeScreen";
-import WebViewScreen from "../WebView";
+import WebViewScreen from "./components/WebView";
 import { COLORS } from "./colors/Colors";
-import { CourseListScreen } from "./subcomponents/CourseListScreen";
+import { CourseListScreen } from "./components/CourseListScreen";
 const Stack = createStackNavigator();
 const App = () => {
     return (
