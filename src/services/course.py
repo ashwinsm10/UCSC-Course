@@ -1,5 +1,5 @@
 class Course:
-    def __init__(self, code, name, instructor, link, class_count, enroll_num,class_type):
+    def __init__(self,code, name, instructor, link, class_count, enroll_num,class_type,schedule, location):
         self.code=code
         self.name = name
         self.instructor = instructor
@@ -7,8 +7,10 @@ class Course:
         self.class_count = class_count
         self.enroll_num = enroll_num
         self.class_type = class_type
+        self.schedule=schedule
+        self.location=location
 
     
 
     def __repr__(self):
-        return f"Course(code={self.code}, name={self.name}, instructors={self.instructor}, link={self.link}, class_count={self.class_count}, enroll_num={self.enroll_num}, class_type={self.class_type})"
+        return f"Course(code={self.code}, name={self.name}, instructors={self.instructor}, link={self.link}, class_count={self.class_count}, enroll_num={self.enroll_num}, class_type={self.class_type},schedule={self.schedule}, location={self.location})"

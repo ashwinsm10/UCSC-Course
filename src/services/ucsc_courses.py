@@ -3,7 +3,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
 from src.services.course import Course
 
 def process_page(driver, class_list):
@@ -16,25 +15,35 @@ def process_page(driver, class_list):
             link_element = row.find_element(By.TAG_NAME, 'a')
             link_url = link_element.get_attribute('href')  
 
-            link_element = link_element.text.split("   ")
-            class_code = link_element[0]
-            class_name = link_element[1]
-
+            link_text = link_element.text.split("   ")
+            class_code = link_text[0]
+            class_name = link_text[1] if len(link_text) > 1 else ""
 
             enroll_num = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-3')[0]
+            enroll_num = enroll_num.text.replace("Class Number: ","")
+
             teacher_div = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-3')[1]
             teacher_name = teacher_div.text.replace('\n', ' ')
             teacher_name = teacher_name.replace('Instructor: ', '')
 
             names = teacher_name.split(",")
-            teacher_name = names[1] + " " + names[0] if len(names) > 1 else teacher_name
+            teacher_name = names[1].strip() + " " + names[0].strip() if len(names) > 1 else teacher_name
+
             class_div = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-3.hide-print')[2]
             class_type = class_div.text.replace('\n', ' ')
             class_type = class_type.replace("Instruction Mode: ","")
 
-            class_count = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-3')[2]
-            class_count = class_count.text.split(" ")[0] + "/" + class_count.text.split(" ")[2]
+            class_count = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-3')[2].text
+            enrolled, total = map(int, class_count.split(" ")[0:3:2])
+            class_count = f"{total - enrolled}/{total}"
 
+            schedule_div = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-6')[1]
+            schedule = schedule_div.text.replace('\n',' ')
+            schedule = schedule.replace("Day and Time: ","")
+
+            location_div = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-6')[0]
+            location = location_div.text.replace('\n',' ')
+            location = location.replace("Location: ","")
 
             class_list.append(Course(
                 code=class_code,
@@ -42,9 +51,10 @@ def process_page(driver, class_list):
                 instructor=teacher_name,
                 link=link_url, 
                 class_count=class_count,
-                enroll_num=enroll_num.text,
-                class_type=class_type
-                
+                enroll_num=enroll_num,
+                class_type=class_type,
+                schedule=schedule,
+                location=location
             ))
 
         return True
@@ -58,12 +68,11 @@ def get_courses(ge_choice):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--headless")
 
-
     driver = webdriver.Chrome(options=chrome_options)
     driver.get("https://pisa.ucsc.edu/class_search/index.php")
 
     class_list = []
-    
+
 
     try:
         term_dropdown = WebDriverWait(driver, 2).until(
@@ -86,7 +95,8 @@ def get_courses(ge_choice):
         submit_button.click()
 
         while True:
-            process_page(driver, class_list)
+            if not process_page(driver, class_list):
+                break
 
             try:
                 next_button = WebDriverWait(driver, 0).until(
@@ -106,3 +116,5 @@ def get_courses(ge_choice):
 if __name__ == "__main__":
     ge_choice = "CC"
     courses = get_courses(ge_choice)
+    for course in courses:
+        print(course)
