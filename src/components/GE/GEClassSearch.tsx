@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,10 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
-  Dimensions,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons"; // For icons like filter and clipboard
+import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { COLORS } from "@/colors/Colors";
@@ -19,20 +18,32 @@ import { fetchCourses, fetchLastUpdate, getTimeAgo } from "./GetGEData";
 import { useQuery } from "@tanstack/react-query";
 import { FilterBottomSheet } from "../FilterBottomSheet";
 import { Course } from "@/types/Types";
-const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
+import WebViewBottomSheet from "../WebBottomModal";
 export const GECourses = ({ navigation, route }) => {
   const { category } = route.params;
   const [search, setSearch] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const [visibleModal, setVisibleModal] = useState(false);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [availabilityFilter, setAvailabilityFilter] = useState("All");
   const [classTypeFilter, setClassTypeFilter] = useState("All");
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [webUrl, setWebUrl] = useState(""); // State to keep track of the URL
+  const handleOpenBottomSheet = (url:string) => {
+    if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+      console.warn("Invalid URL format");
+      return;
+    }
+    setWebUrl(url);
+    setBottomSheetVisible(true);
+  };
+
+  const handleCloseBottomSheet = () => {
+    setBottomSheetVisible(false);
+  };
 
   const {
-    data: totalCourses,
+    data: courses,
     isLoading,
-    error,
     refetch: refetchCourse,
   } = useQuery({
     queryKey: ["courses", category],
@@ -41,128 +52,112 @@ export const GECourses = ({ navigation, route }) => {
 
   const { data: lastUpdated, refetch: refetchTime } = useQuery({
     queryKey: ["lastUpdate"],
-    queryFn: () => fetchLastUpdate(),
+    queryFn: fetchLastUpdate,
   });
 
-  React.useEffect(() => {
-    if (totalCourses) {
-      setCourses(filterCourses(totalCourses));
-    }
-  }, [totalCourses, availabilityFilter, classTypeFilter, search]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refetchCourse();
-    await refetchTime();
-    setRefreshing(false);
-  };
-
-  const copyToClipboard = (courseCode: string) => {
-    Clipboard.setStringAsync(courseCode);
-    Alert.alert("Copied to Clipboard", `${courseCode} copied to clipboard.`);
-  };
-
-  const calculateSpotsLeft = (class_count: string) => {
-    const [current, total] = class_count.split("/");
-    const current_num = parseInt(current);
-    const total_num = parseInt(total);
-    return (total_num - current_num).toString() + "/" + total;
-  };
-
-  const getAvailabilityLevel = (class_count: string) => {
-    const [current, total] = class_count.split("/");
-    const spotsLeft = parseInt(total) - parseInt(current);
-    if (spotsLeft < 10) return "Low";
-    if (spotsLeft < 25) return "Medium";
-    return "High";
-  };
-
-  const filterCourses = (courses: Course[]) => {
-    return courses.filter((course) => {
+  const filterCourses = useCallback(() => {
+    if (!courses) return [];
+    return courses.filter((course:Course) => {
       const matchesSearch =
         course.name.toLowerCase().includes(search.toLowerCase()) ||
         course.code.toLowerCase().includes(search.toLowerCase()) ||
         course.instructor.toLowerCase().includes(search.toLowerCase());
-
       const matchesAvailability =
         availabilityFilter === "All" ||
         getAvailabilityLevel(course.class_count) === availabilityFilter;
-
       const matchesClassType =
         classTypeFilter === "All" || course.class_type === classTypeFilter;
-
       return matchesSearch && matchesAvailability && matchesClassType;
     });
-  };
+  }, [courses, search, availabilityFilter, classTypeFilter]);
 
-  const RMPButton = ({ text }: { text: string }) => {
-    const searchName =
-      text.split(" ")[1] +
-      " " +
-      (text.split(" ")[2] ?? "") +
-      " " +
-      text.split(" ")[0];
-    return (
-      <TouchableOpacity
-        onPress={() =>
-          navigation.navigate("WebViewScreen", {
-            url: `https://www.ratemyprofessors.com/search/professors/1078?q=${searchName}`,
-            course: "Rate My Prof",
-          })
-        }
-      >
-        <Text style={styles.instructor}>{text}</Text>
-      </TouchableOpacity>
-    );
-  };
+  useEffect(() => {
+    setFilteredCourses(filterCourses());
+  }, [filterCourses]);
 
-  const renderCourseItem = ({ item }) => (
-    <View style={styles.courseContainer}>
-      <TouchableOpacity
-        onPress={() => navigation.navigate("WebViewScreen", { url: item.link })}
-      >
-        <Ionicons
-          name="information-circle-outline"
-          size={24}
-          color="gray"
-          style={styles.icon}
-        />
-      </TouchableOpacity>
-      <View style={styles.courseDetails}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text style={styles.title}>{item.name + " "}</Text>
-          <RMPButton text={item.instructor} />
-        </View>
-        <View style={styles.codeAndInstructor}>
-          <View style={styles.codeContainer}>
-            <Text style={styles.code}>{`${item.code}`}</Text>
-            <TouchableOpacity
-              onPress={() => copyToClipboard(item.enroll_num.toString())}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text>{`(${item.enroll_num}`} </Text>
-                <Ionicons name="clipboard-outline" size={18} color="gray" />
-                <Text>{")"} </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <Text style={styles.time}>{item.schedule}</Text>
-        <Text>{item.location}</Text>
+  const onRefresh = useCallback(async () => {
+    await Promise.all([refetchCourse(), refetchTime()]);
+  }, [refetchCourse, refetchTime]);
 
-        {category === "AnyGE" && (
-          <Text style={styles.classType}>{item.ge}</Text>
-        )}
-      </View>
-      <Text style={styles.spots}>
-        {calculateSpotsLeft(item.class_count)} left
-      </Text>
-    </View>
+  const copyToClipboard = useCallback((courseCode: string) => {
+    Clipboard.setStringAsync(courseCode);
+    Alert.alert("Copied to Clipboard", `${courseCode} copied to clipboard.`);
+  }, []);
+
+  const RMPButton = useCallback(
+    ({ text }: { text: string }) => {
+      const searchName = text.split(" ").slice(1).join(" ");
+      return (
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate("WebViewScreen", {
+              url: `https://www.ratemyprofessors.com/search/professors/1078?q=${searchName}`,
+              course: "Rate My Prof",
+              search: text,
+            })
+          }
+        >
+          <Text style={styles.instructor}>{text}</Text>
+        </TouchableOpacity>
+      );
+    },
+    [navigation]
   );
 
-  if (isLoading) {
-    return <ActivityIndicator size={"large"} />;
-  }
+  const renderCourseItem = useCallback(
+    ({ item }: { item: Course }) => (
+      <View style={styles.courseContainer}>
+        <TouchableOpacity onPress={() => handleOpenBottomSheet(item.link)}>
+          <Ionicons
+            name="information-circle-outline"
+            size={24}
+            color="gray"
+          />
+        </TouchableOpacity>
+        <View style={styles.courseDetails}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={styles.title}>{item.name + " "}</Text>
+            <RMPButton text={item.instructor} />
+          </View>
+          <View style={styles.codeAndInstructor}>
+            <View style={styles.codeContainer}>
+              <Text style={styles.code}>{item.code}</Text>
+            </View>
+          </View>
+          <Text style={styles.time}>{item.schedule}</Text>
+          <Text style={styles.time}>{item.location}</Text>
+          {category === "AnyGE" && <Text style={styles.time}>{item.ge}</Text>}
+        </View>
+        <Text style={[styles.spots, { color: getHashColor(item.class_count) }]}>
+          {calculateSpotsLeft(item.class_count)} left
+        </Text>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            onPress={() => copyToClipboard(item.enroll_num.toString().trim())}
+            style={styles.copyButton}
+          >
+            <Ionicons
+              name="clipboard-outline"
+              size={18}
+              color="gray"
+              style={{ marginRight: 5 }}
+            />
+            <Text style={styles.copyButtonText}>Copy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => Alert.alert("Not Implemented", "Coming soon...")}
+            style={styles.addButton}
+          >
+            <Text style={styles.addButtonText}>Add to</Text>
+            <Ionicons name="cart-outline" size={18} color={COLORS.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    ),
+    [navigation, category, copyToClipboard, RMPButton]
+  );
+
+  if (isLoading) return <ActivityIndicator size="large" />;
 
   return (
     <View style={styles.container}>
@@ -185,37 +180,34 @@ export const GECourses = ({ navigation, route }) => {
           style={styles.searchInput}
           placeholder="Search anything..."
           value={search}
-          onChangeText={(text) => setSearch(text)}
+          onChangeText={setSearch}
         />
       </View>
-
-      <Text style={styles.lastUpdated}>{`Last Updated: ${getTimeAgo(
-        lastUpdated
-      ) ?? "Just now"}` }</Text>
-
+      <Text style={styles.lastUpdated}>
+        Last Updated: {lastUpdated ? getTimeAgo(lastUpdated) : "Just now"}
+      </Text>
       <FlatList
-        data={courses}
+        data={filteredCourses}
         renderItem={renderCourseItem}
+        keyExtractor={(item) => item.code}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
         }
         scrollIndicatorInsets={{ top: 20, bottom: 20 }}
       />
-
       <TouchableOpacity
         style={styles.myButton}
         onPress={() =>
-          navigation.navigate("WebViewScreen", { url: "https://my.ucsc.edu/" })
+          navigation.navigate("WebViewScreen", {
+            url: "https://my.ucsc.edu/",
+            search: "MyUCSC",
+          })
         }
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text style={styles.myButtonText}>Go to MyUCSC</Text>
-          <Icon
-            name="arrow-forward"
-            size={20}
-            style={{ color: COLORS.white }}
-          />
+          <Icon name="arrow-forward" size={20} color={COLORS.white} />
         </View>
       </TouchableOpacity>
       {visibleModal && (
@@ -227,8 +219,41 @@ export const GECourses = ({ navigation, route }) => {
           onClose={() => setVisibleModal(false)}
         />
       )}
+      <WebViewBottomSheet
+        visible={bottomSheetVisible}
+        url={webUrl}
+        onClose={handleCloseBottomSheet}
+      />
     </View>
   );
+};
+
+const calculateSpotsLeft = (class_count: string) => {
+  const [current, total] = class_count.split("/").map(Number);
+  return `${total - current}/${total}`;
+};
+
+const getAvailabilityLevel = (class_count: string) => {
+  const [current, total] = class_count.split("/").map(Number);
+  const spotsLeft = total - current;
+  if (spotsLeft < 10) return "Low";
+  if (spotsLeft < 25) return "Medium";
+  return "High";
+};
+
+const getHashColor = (capacity: string) => {
+  const [currentStr, totalStr] = capacity.split("/");
+  const current = parseInt(currentStr, 10);
+  const total = parseInt(totalStr, 10);
+
+  if (total > 0) {
+    const remaining = total - current;
+    if (remaining < 10) return COLORS.red;
+    else if (remaining < 25) return COLORS.orange;
+    return COLORS.green;
+  }
+
+  return COLORS.gray;
 };
 
 const styles = StyleSheet.create({
@@ -292,7 +317,12 @@ const styles = StyleSheet.create({
   },
   instructor: {
     fontSize: 14,
-    color: "#0000EE", // Blue color for button look
+    color: "#0000EE",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    marginRight: 8,
   },
   time: {
     fontSize: 14,
@@ -303,6 +333,46 @@ const styles = StyleSheet.create({
     color: "black",
     fontWeight: "bold",
   },
+  buttonContainer: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    flexDirection: "row",
+  },
+  copyButton: {
+    backgroundColor: COLORS.white,
+    padding: 5,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginRight: 8,
+  },
+  copyButtonText: {
+    fontSize: 12,
+    color: "gray",
+    fontWeight: "bold",
+  },
+  addButton: {
+    backgroundColor: COLORS.green,
+    padding: 5,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  addButtonText: {
+    fontSize: 12,
+    color: COLORS.white,
+    fontWeight: "bold",
+    marginRight: 5,
+  },
   myButton: {
     position: "absolute",
     bottom: 20,
@@ -311,8 +381,8 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: "center",
     borderRadius: 30,
-    elevation: 5, // Shadow effect for the floating button on Android
-    shadowColor: "#000", // Shadow effect for iOS
+    elevation: 5,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 2,
@@ -323,8 +393,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   listContainer: {
-    paddingBottom: 80, // Adjusted to ensure content doesn't overlap with the floating button
+    paddingBottom: 80,
   },
 });
-
-export default GECourses;

@@ -1,6 +1,7 @@
 from src.services.major_links import main as get_links_from_major_links
 import requests
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Define the order of course types
 COURSE_TYPE_ORDER = [
@@ -47,26 +48,36 @@ def sort_course_types(course_types):
     ))
     return sorted_types
 
+def fetch_courses_for_degree(link):
+    degree_url = link[0]
+    print(f'Scraping courses from: {link[1]}')
+    courses = scrape_courses_from_page(degree_url)
+    return link[1], courses
+
 def get_all_major_courses():
     links = get_links_from_major_links()
     course_list = {}
 
-    for link in links:
-        degree_url = link[0]
-        print(f'Scraping courses from: {link[1]}')
-        courses = scrape_courses_from_page(degree_url)
+    with ThreadPoolExecutor(max_workers=5) as executor:  # Example: Using 10 threads
+        future_to_degree = {executor.submit(fetch_courses_for_degree, link): link[1] for link in links}
 
-        # Sort course types based on the predefined order
-        sorted_course_types = sort_course_types(courses)
-        
-        sorted_courses_by_type = {course_type: courses[course_type] for course_type in sorted_course_types}
-        course_list[link[1]] = sorted_courses_by_type
-        
-        for course_type, course_list_for_type in sorted_courses_by_type.items():
-            print(f'\nCourse Type: {course_type}')
-            for course in course_list_for_type:
-                print(f'  Course: {course}')
-            print('-' * 40)
+        for future in as_completed(future_to_degree):
+            degree_name = future_to_degree[future]
+            try:
+                courses = future.result()
+                # Sort course types based on the predefined order
+                sorted_course_types = sort_course_types(courses[1])
+                
+                sorted_courses_by_type = {course_type: courses[1][course_type] for course_type in sorted_course_types}
+                course_list[degree_name] = sorted_courses_by_type
+
+                for course_type, course_list_for_type in sorted_courses_by_type.items():
+                    print(f'\nCourse Type: {course_type}')
+                    for course in course_list_for_type:
+                        print(f'  Course: {course}')
+                    print('-' * 40)
+            except Exception as exc:
+                print(f'{degree_name} generated an exception: {exc}')
 
     return course_list
 

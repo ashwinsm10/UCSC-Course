@@ -3,10 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Dimensions, TouchableOpacity } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import {
-  MainScreen,
-  MajorRequirementsClassSearch,
-} from "./components/HomeScreen";
+import { HomeScreen } from "./components/HomeScreen";
 import WebViewScreen from "./components/WebView";
 import { COLORS } from "./colors/Colors";
 import { ClassSearchResult } from "./components/ClassSearchResult";
@@ -14,6 +11,7 @@ import { MajorPlanner } from "./components/MajorPlanner";
 import MyUCSCGrid from "./components/GE/GEListScreen";
 import { GECourses } from "./components/GE/GEClassSearch";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {MajorRequirementsClassSearch} from "./components/MajorSearch";
 
 const Stack = createStackNavigator();
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
@@ -26,20 +24,11 @@ const App = () => {
         <Stack.Navigator>
           <Stack.Screen
             name="Main"
-            component={MainScreen}
+            component={HomeScreen}
             options={{
               headerTitle: "",
               headerStyle: { height: screenHeight * 0.125 },
               headerShadowVisible: false, // This will remove the shadow on Android
-              headerLeft: () => (
-                <TouchableOpacity style={{ marginLeft: screenWidth * 0.02 }}>
-                  <Icon
-                    name="menu"
-                    size={screenHeight * 0.05}
-                    color={COLORS.black}
-                  />
-                </TouchableOpacity>
-              ),
             }}
           />
 
@@ -48,7 +37,7 @@ const App = () => {
             component={GECourses}
             options={({ navigation, route }) => ({
               headerStyle: { height: screenHeight * 0.125 },
-              headerTitle: route?.params?.category,
+              headerTitle: `${route?.params?.category}: 2024 Fall`,
 
               headerLeft: () => (
                 <TouchableOpacity
@@ -63,8 +52,10 @@ const App = () => {
           <Stack.Screen
             name="WebViewScreen"
             component={WebViewScreen}
-            options={({ navigation }) => ({
+            options={({ navigation, route }) => ({
               headerStyle: { height: screenHeight * 0.125 },
+              headerTitle: route?.params?.search,
+
               headerLeft: () => (
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}
@@ -131,7 +122,9 @@ const App = () => {
             component={MyUCSCGrid}
             options={({ navigation }) => ({
               headerStyle: { height: screenHeight * 0.125 },
-              headerShadowVisible: false, // This will remove the shadow on Android
+              headerShadowVisible: false,
+              headerTitle: "",
+
 
               headerLeft: () => (
                 <TouchableOpacity

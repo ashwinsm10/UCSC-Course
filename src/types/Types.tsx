@@ -53,7 +53,7 @@ export interface Class {
   enrl_total: string;
   instructors: Instructor[];
 }
-const local = "http://127.0.0.1:5001";
+const local = "http://10.0.0.124:5001";
 const ngrok_url = "https://10db-73-116-191-23.ngrok-free.app";
 export const API_URL = `${local}/api/courses`;
 export const LAST_UPDATE_URL = `${local}/api/last_update`;

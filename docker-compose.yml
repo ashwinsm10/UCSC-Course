@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  flask-backend:  # Renamed from web to flask-backend
+    build: .
+    ports:
+      - "5001:5001"
+    volumes:
+      - .:/app  # Mount current directory to /app in the container
+    environment:
+      FLASK_ENV: development  # Set environment variable for Flask
+    command: python3 app.py  # Command to run your app
+    platform: linux/amd64  # Specify the platform for the flask-backend service
+    depends_on:
+      selenium:
+        condition: service_healthy  # Wait until the Selenium service is healthy
+
+  selenium:
+    mem_limit: 3221225472
+    image: selenium/standalone-chrome:latest  # Use the latest version
+    environment:
+      - START_XVFB=false
+      - SE_NODE_MAX_SESSIONS=5  # Adjust as needed
+      - JAVA_OPTS=-XX:ActiveProcessorCount=5
+    ports:
+      - "4444:4444"
+    platform: linux/amd64  # Specify the platform for the Selenium service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]  # Check the Selenium server status
+      interval: 30s  # Check every 30 seconds
+      timeout: 10s  # Timeout for each check
+      retries: 5  # Retry up to 5 times before considering the service unhealthy

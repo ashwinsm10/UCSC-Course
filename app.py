@@ -8,12 +8,14 @@ from datetime import datetime
 from src.services.major_courses import get_all_major_courses
 from src.services.ucsc_courses import get_courses
 import pytz
+import concurrent.futures
 
 app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///courses.db'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
 class Degree(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
@@ -39,11 +41,9 @@ class CourseModel(db.Model):
     location = db.Column(db.String(20))
     timestamp = db.Column(db.DateTime, default=datetime.now(tz=pytz.utc))
 
-
 def create_db():
     with app.app_context():
         db.create_all()
-        
 
 last_update_time = None
 
@@ -55,7 +55,6 @@ def get_last_update():
         last_update_time = datetime.fromisoformat(last_update_time)
     
     return jsonify({"last_update": last_update_time.isoformat()})
-
 
 def update_all_courses():
     with app.app_context():
@@ -76,7 +75,7 @@ def update_all_courses():
         
         db.session.commit()
         print("All courses updated successfully")
-        
+
 def store_courses_in_db():
     global last_update_time
     with app.app_context():
@@ -86,21 +85,33 @@ def store_courses_in_db():
                 "CC", "ER", "IM", "MF", "SI", "SR", "TA", "PE-E", "PE-H", "PE-T", 
                 "PR-E", "PR-C", "PR-S", "C1", "C2"
             ]
-            for category in categories:
-                for course in get_courses(category):
-                    db.session.add(CourseModel(
-                        ge=category,
-                        code=course.code,
-                        name=course.name,
-                        instructor=course.instructor,
-                        link=course.link,
-                        class_count=course.class_count,
-                        enroll_num=course.enroll_num,
-                        class_type=course.class_type,
-                        schedule=course.schedule,
-                        location = course.location,
-                    ))
-            db.session.commit()
+            
+            all_courses = get_courses(categories)
+            
+            def add_courses_to_db(courses):
+                with app.app_context():
+                    for course in courses:
+                        db.session.add(CourseModel(
+                            ge=course.ge,
+                            code=course.code,
+                            name=course.name,
+                            instructor=course.instructor,
+                            link=course.link,
+                            class_count=course.class_count,
+                            enroll_num=course.enroll_num,
+                            class_type=course.class_type,
+                            schedule=course.schedule,
+                            location=course.location,
+                        ))
+                    db.session.commit()
+            
+            # Split courses into chunks for parallel processing
+            chunk_size = 100
+            course_chunks = [all_courses[i:i + chunk_size] for i in range(0, len(all_courses), chunk_size)]
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                executor.map(add_courses_to_db, course_chunks)
+            
             last_update_time = datetime.now(pytz.timezone('America/Los_Angeles'))
             print("Courses updated in database.")
         except Exception as e:
@@ -108,10 +119,8 @@ def store_courses_in_db():
 
 def schedule_jobs():
     scheduler = BackgroundScheduler()
-    # Schedule update_all_courses to run every 3 weeks
     scheduler.add_job(update_all_courses, 'interval', weeks=3, id='update_all_courses_job')
-    # Schedule store_courses_in_db to run every minute
-    scheduler.add_job(store_courses_in_db, 'interval', seconds=60, id='store_courses_in_db_job')
+    scheduler.add_job(store_courses_in_db, 'interval', seconds=25, id='store_courses_in_db_job')
     scheduler.start()
 
 @app.route('/api/last_update', methods=['GET'])
@@ -158,14 +167,11 @@ def get_courses_data():
 
 if __name__ == '__main__':
     with app.app_context():
-            print("Initializing database with initial data...")
-            create_db()
-            store_courses_in_db()
-
-            update_all_courses()
-        
-    # Start the scheduler for periodic updates
+        print("Initializing database with initial data...")
+        create_db()
+        store_courses_in_db()
+        update_all_courses()
+    
     schedule_jobs()
     
-    # Run the Flask app
     app.run(host='0.0.0.0', port=5001)

@@ -2,34 +2,38 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  FlatList,
+  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
   RefreshControl,
-  TouchableWithoutFeedback,
-  Animated,
-  TextInput,
-  Keyboard,
-  Easing,
   Dimensions,
+  Alert,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../colors/Colors";
-import { Class, LAST_UPDATE_URL, SEARCH_API_URL } from "../types/Types";
+import { Class } from "../types/Types";
 import * as Clipboard from "expo-clipboard";
-import Icon2 from "react-native-vector-icons/FontAwesome5";
-import Icon from "react-native-vector-icons/FontAwesome";
 import {
   fetchClassesBySubjectAndNumber,
   fetchClassesByTitle,
 } from "./GetClassSearchData";
-import { useRef } from "react";
 import { FilterBottomSheet } from "./FilterBottomSheet";
 import { CourseList } from "./CourseList";
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export const ClassSearchResult = ({ route, navigation }) => {
   const { search } = route.params;
+  const [totalCourses, setTotalCourses] = useState<Class[]>([]);
+  const [courses, setCourses] = useState<Class[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [lastUpdate, setLastUpdate] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>("All");
+  const [classTypeFilter, setClassTypeFilter] = useState<string>("All");
+
   const fetchCourses = async () => {
     try {
       setLoading(true);
@@ -51,6 +55,7 @@ export const ClassSearchResult = ({ route, navigation }) => {
       setLoading(false);
     }
   };
+
   const fetchLastUpdate = () => {
     try {
       const currentTime = new Date().toLocaleString();
@@ -67,30 +72,10 @@ export const ClassSearchResult = ({ route, navigation }) => {
     setRefreshing(false);
   };
 
-  const [totalCourses, setTotalCourses] = useState<Class[]>([]);
-  const [courses, setCourses] = useState<Class[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
-  const [searchVisible, setSearchVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [lastUpdate, setLastUpdate] = useState("");
-  const [availabilityFilter, setAvailabilityFilter] = useState<string>("All");
-  const [classTypeFilter, setClassTypeFilter] = useState<string>("All");
-  const [searchAnim] = useState(new Animated.Value(0));
   useEffect(() => {
     fetchCourses();
     fetchLastUpdate();
   }, [search, availabilityFilter, classTypeFilter]);
-
-  const searchInputRef = useRef(null);
-  const [showMessage, setShowMessage] = useState(false);
-  const [copiedEnrollNum, setCopiedEnrollNum] = useState("");
-
-  useEffect(() => {
-    handleRefresh();
-  }, [search]);
 
   useEffect(() => {
     let filteredCourses = totalCourses;
@@ -113,40 +98,22 @@ export const ClassSearchResult = ({ route, navigation }) => {
         const current = parseInt(course.enrl_total, 10);
         const available = total - current;
 
-        if (available <= 0) {
-          return false;
-        }
-
+        if (available <= 0) return false;
         if (availabilityFilter === "Low" && available < 10) return true;
-        if (
-          availabilityFilter === "Medium" &&
-          available >= 10 &&
-          available < 25
-        )
-          return true;
+        if (availabilityFilter === "Medium" && available >= 10 && available < 25) return true;
         if (availabilityFilter === "High" && available >= 25) return true;
 
         return false;
       });
     }
 
-    // Apply classTypeFilter
     if (classTypeFilter !== "All") {
-      filteredCourses = filteredCourses.filter(
-        (course) => course.class_type === classTypeFilter
-      );
+      filteredCourses = filteredCourses.filter((course) => course.class_type === classTypeFilter);
     }
 
-    // Apply search query filter
     if (searchQuery) {
       filteredCourses = filteredCourses.filter((course) =>
-        [
-          course.code,
-          course.name,
-          course.instructor,
-          course.schedule,
-          course.location,
-        ].some((field) =>
+        [course.code, course.name, course.instructor, course.schedule, course.location].some((field) =>
           field.toLowerCase().includes(searchQuery.toLowerCase())
         )
       );
@@ -155,77 +122,8 @@ export const ClassSearchResult = ({ route, navigation }) => {
     setCourses(filteredCourses);
   }, [availabilityFilter, classTypeFilter, totalCourses, searchQuery]);
 
-  useEffect(() => {
-    Animated.timing(searchAnim, {
-      toValue: searchVisible ? 1 : 0,
-      duration: 300,
-      easing: Easing.ease,
-      useNativeDriver: false,
-    }).start();
-  }, [searchVisible]);
+ 
 
-  const handlePress = (url: string, course: string) => {
-    navigation.navigate("WebViewScreen", { url, course });
-  };
-
-  const EmptyState = () => (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 20,
-        backgroundColor: COLORS.primary,
-      }}
-    >
-      <Text style={{ fontSize: 18, fontWeight: "bold", color: COLORS.gray }}>
-        No courses available :(
-      </Text>
-    </View>
-  );
-  const handleCopy = async (str: string) => {
-    try {
-      await Clipboard.setStringAsync(str);
-      setCopiedEnrollNum(str);
-      setShowMessage(true);
-      setTimeout(() => {
-        setShowMessage(false);
-        setCopiedEnrollNum("");
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to copy text:", error);
-    }
-  };
-  const CopyButton = ({ text }: { text: string }) => {
-    return (
-      <TouchableOpacity
-        style={{
-          alignSelf: "center",
-          backgroundColor: COLORS.primary,
-          paddingHorizontal: 5,
-          paddingVertical: 2,
-          borderRadius: 5,
-          borderWidth: 1,
-        }}
-        onPress={() => handleCopy(text)}
-      >
-        <Text
-          style={{
-            color: COLORS.secondary,
-            fontWeight: "bold",
-            textDecorationLine: "underline",
-          }}
-        >
-          {text}{" "}
-          {copiedEnrollNum === text ? ( // Show the clipboard-check icon only for the copied item
-            <Icon2 name="clipboard-check" />
-          ) : (
-            <Icon2 name="clipboard" />
-          )}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
   
 
   const getHashColor = (enrl_total: string, enrl_capacity: string) => {
@@ -234,193 +132,149 @@ export const ClassSearchResult = ({ route, navigation }) => {
 
     if (total > 0) {
       const remaining = total - current;
-      if (remaining < 10) return COLORS.red; // Low availability
-      else if (remaining < 25) return COLORS.orange; // Medium availability
-      return COLORS.green; // High availability
+      if (remaining < 10) return COLORS.red;
+      else if (remaining < 25) return COLORS.orange;
+      return COLORS.green;
     }
 
-    return COLORS.gray; // When total is 0 or invalid
+    return COLORS.gray;
   };
+
+  const EmptyState = () => (
+    <View style={styles.emptyStateContainer}>
+      <Text style={styles.emptyStateText}>No courses available :(</Text>
+    </View>
+  );
 
   if (loading && !refreshing) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: COLORS.primary,
-        }}
-      >
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.secondary} />
       </View>
     );
   }
 
   return (
-    !loading && (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => setModalVisible(!modalVisible)}
-          >
-            <Icon
-              name="filter"
-              size={screenWidth * 0.085}
-              color={COLORS.secondary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => setSearchVisible(!searchVisible)}
-          >
-            <Icon
-              name="search"
-              size={screenWidth * 0.07}
-              color={COLORS.secondary}
-            />
-          </TouchableOpacity>
-          {!searchVisible && (
-            <View style={styles.lastUpdateContainer}>
-              <Text style={styles.lastUpdateText}>
-                Last updated: {lastUpdate}
-              </Text>
-            </View>
-          )}
-
-          {searchVisible && (
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <Animated.View
-                style={[
-                  styles.searchContainer,
-
-                  {
-                    width: searchAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [screenWidth * 0.75, screenWidth * 0.75], // Expands from 0 to 75% of screen width
-                    }),
-                    opacity: searchAnim,
-                  },
-                ]}
-              >
-                <TextInput
-                  ref={searchInputRef}
-                  style={styles.searchInput}
-                  placeholder="Search classes by anything..."
-                  placeholderTextColor={COLORS.gray}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  returnKeyType="done"
-                />
-              </Animated.View>
-            </TouchableWithoutFeedback>
-          )}
-        </View>
-        {modalVisible && (
-          <FilterBottomSheet
-            onClose={() => setModalVisible(false)}
-            availabilityFilter={availabilityFilter}
-            setAvailabilityFilter={setAvailabilityFilter}
-            classTypeFilter={classTypeFilter}
-            setClassTypeFilter={setClassTypeFilter}
-          />
-        )}
-
-        <CourseList
-          courses={courses}
-          handlePress={handlePress}
-          getHashColor={getHashColor}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={COLORS.secondary}
-            />
-          }
-          EmptyState={EmptyState}
+    <View style={styles.container}>
+      <View style={styles.searchContainer}>
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <Ionicons name="filter" size={24} color="black" style={styles.filterIcon} />
+        </TouchableOpacity>
+        <Ionicons name="search" size={20} color="gray" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search anything..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
-
-        {showMessage && (
-          <View style={styles.messageContainer}>
-            <Text style={styles.message}>Copied to clipboard!</Text>
-          </View>
-        )}
       </View>
-    )
+
+      <Text style={styles.lastUpdated}>{`Last Updated: ${lastUpdate}`}</Text>
+
+      <CourseList
+        courses={courses}
+        getHashColor={getHashColor}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        EmptyState={EmptyState}
+      />
+
+      <TouchableOpacity
+        style={styles.myButton}
+        onPress={() =>
+          navigation.navigate("WebViewScreen", {
+            url: "https://my.ucsc.edu/",
+            search: "MyUCSC",
+          })
+        }
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={styles.myButtonText}>Go to MyUCSC</Text>
+          <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
+        </View>
+      </TouchableOpacity>
+
+      {modalVisible && (
+        <FilterBottomSheet
+          onClose={() => setModalVisible(false)}
+          availabilityFilter={availabilityFilter}
+          setAvailabilityFilter={setAvailabilityFilter}
+          classTypeFilter={classTypeFilter}
+          setClassTypeFilter={setClassTypeFilter}
+        />
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: screenHeight * 0.01, // 1% of screen height
     flex: 1,
-    padding: screenWidth * 0.025, // 2.5% of screen width
-    backgroundColor: COLORS.primary,
-  },
-  courseItem: {
-    padding: screenWidth * 0.025, // 2.5% of screen width
-    backgroundColor: COLORS.secondary,
-    borderRadius: screenWidth * 0.025, // 2.5% of screen width
-    flexDirection: "row",
-    alignItems: "flex-start",
-    width: "100%",
-    position: "relative",
-  },
-
-  buttonContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  button: {
-    marginRight: "4%", // 2.5% of screen width
-    marginBottom: screenHeight * 0.015, // 1.5% of screen height
-  },
-  lastUpdateContainer: {
-    padding: screenWidth * 0.0125, // 1.25% of screen width
-    paddingVertical: screenHeight * 0.01, // 1% of screen height
-    backgroundColor: COLORS.secondary,
-    borderRadius: screenWidth * 0.0125, // 1.25% of screen width
-    marginBottom: screenHeight * 0.01, // 1% of screen height
-  },
-  lastUpdateText: {
-    color: COLORS.primary,
-    fontWeight: "bold",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    backgroundColor: COLORS.white,
   },
   searchContainer: {
-    height: screenHeight * 0.045, // 5% of screen height (match height of lastUpdateContainer)
-    backgroundColor: COLORS.primary,
-    borderRadius: screenWidth * 0.0125, // 1.25% of screen width
-    justifyContent: "center", // Center content vertically
-    marginBottom: screenHeight * 0.01,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0EDEB",
+    borderRadius: 10,
+    margin: 10,
+    paddingHorizontal: 10,
+  },
+  filterIcon: {
+    marginRight: 10,
+  },
+  searchIcon: {
+    marginRight: 5,
   },
   searchInput: {
-    height: "100%", // Fill height of searchContainer
-    width: "99%", // Fill width of searchContainer (adjust width as needed)
-    borderColor: COLORS.secondary,
-    borderWidth: 1,
-    borderRadius: screenWidth * 0.0125, // 1.25% of screen width
-    paddingHorizontal: screenWidth * 0.025, // 2.5% of screen width
-    color: COLORS.secondary,
+    flex: 1,
+    height: 40,
+    fontSize: 16,
   },
-  messageContainer: {
-    position: "absolute",
-    top: 20, // Adjust to position the message at the top
-    left: 0,
-    right: 0,
+  lastUpdated: {
+    marginLeft: 15,
+    color: "gray",
+    fontSize: 14,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
+    backgroundColor: COLORS.white,
   },
-  message: {
-    padding: 10,
-    backgroundColor: COLORS.primary,
-    opacity: 0.8,
-    color: "white",
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: COLORS.white,
+  },
+  emptyStateText: {
+    fontSize: 18,
     fontWeight: "bold",
-    borderRadius: 5,
+    color: COLORS.gray,
+  },
+  myButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    backgroundColor: "green",
+    padding: 15,
+    alignItems: "center",
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+  },
+  myButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "bold",
+    marginRight: 5,
   },
 });
+
+export default ClassSearchResult;

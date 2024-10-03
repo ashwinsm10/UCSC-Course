@@ -14,26 +14,26 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
 
 const data = [
-  { key: "CC", image: require("../../assets/cc.png") },
-  { key: "ER", image: require("../../assets/er.png") },
-  { key: "IM", image: require("../../assets/im.png") },
-  { key: "MF", image: require("../../assets/mf.png") },
-  { key: "SI", image: require("../../assets/si.png") },
-  { key: "SR", image: require("../../assets/sr.png") },
-  { key: "TA", image: require("../../assets/ta.png") },
-  { key: "PE-E", image: require("../../assets/pe-e.png") },
-  { key: "PE-H", image: require("../../assets/pe-h.png") },
-  { key: "PE-T", image: require("../../assets/pe-t.png") },
-  { key: "PR-E", image: require("../../assets/pr-e.png") },
-  { key: "PR-C", image: require("../../assets/pr-c.png") },
-  { key: "PR-S", image: require("../../assets/pr-s.png") },
-  { key: "C1", image: require("../../assets/c1.png") },
-  { key: "C2", image: require("../../assets/c2.png") },
-  { key: "AnyGE", image: require("../../assets/anyge.png") },
+  { key: "CC", image: require("../../assets/cc.webp") },
+  { key: "ER", image: require("../../assets/er.webp") },
+  { key: "IM", image: require("../../assets/im.webp") },
+  { key: "MF", image: require("../../assets/mf.webp") },
+  { key: "SI", image: require("../../assets/si.webp") },
+  { key: "SR", image: require("../../assets/sr.webp") },
+  { key: "TA", image: require("../../assets/ta.webp") },
+  { key: "PE-E", image: require("../../assets/pe-e.webp") },
+  { key: "PE-H", image: require("../../assets/pe-h.webp") },
+  { key: "PE-T", image: require("../../assets/pe-t.webp") },
+  { key: "PR-E", image: require("../../assets/pr-e.webp") },
+  { key: "PR-C", image: require("../../assets/pr-c.webp") },
+  { key: "PR-S", image: require("../../assets/pr-s.webp") },
+  { key: "C1", image: require("../../assets/c1.webp") },
+  { key: "C2", image: require("../../assets/c2.webp") },
+  { key: "AnyGE", image: require("../../assets/anyge.webp") },
 ];
 
 const MyUCSCGrid = ({ navigation }) => {
-  const [showImages, setShowImages] = useState(false);
+  const [showImages, setShowImages] = useState(true);
 
   useEffect(() => {
     const loadToggleState = async () => {
@@ -50,7 +50,7 @@ const MyUCSCGrid = ({ navigation }) => {
   }, [showImages]);
 
   const toggleImages = () => {
-    setShowImages((prev) => !prev); 
+    setShowImages((prev) => !prev);
   };
 
   const renderItem = ({ item }) => (
@@ -65,7 +65,6 @@ const MyUCSCGrid = ({ navigation }) => {
           contentFit="cover"
           transition={250}
           cachePolicy={"memory"}
-          placeholder={item.key}
         />
       ) : (
         <View style={styles.placeholder} />
@@ -81,13 +80,12 @@ const MyUCSCGrid = ({ navigation }) => {
       <Button
         title={showImages ? "Hide Images" : "Show Images"}
         onPress={toggleImages}
-        
       />
       <FlatList
         data={data}
         renderItem={renderItem}
         keyExtractor={(item) => item.key}
-        numColumns={2} 
+        numColumns={2}
         contentContainerStyle={styles.flatList}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}

@@ -69,7 +69,7 @@ export const FilterBottomSheet = React.memo(
             snapPoints={snapPoints}
             enablePanDownToClose={true}
             handleIndicatorStyle={{
-              backgroundColor: COLORS.white,
+              backgroundColor: COLORS.black,
               opacity: 0.6,
             }}
             backdropComponent={(props) => (
@@ -88,7 +88,6 @@ export const FilterBottomSheet = React.memo(
             backgroundStyle={{ backgroundColor: COLORS.secondary }}
             onClose={onClose} // Ensure closing when pan down is used
           >
-            <ScrollView contentContainerStyle={styles.filterOptionsContainer}>
               <View style={styles.rowContainer}>
                 <View style={styles.filterItem}>
                   <Text style={styles.filterTitle}>Select Availability:</Text>
@@ -121,7 +120,6 @@ export const FilterBottomSheet = React.memo(
                   />
                 </View>
               </View>
-            </ScrollView>
           </BottomSheet>
         )}
       </View>
@@ -135,7 +133,7 @@ const styles = StyleSheet.create({
   },
   filterOptionsContainer: {
     width: "95%",
-    padding: screenWidth * 0.025, // 2.5% of screen width
+    padding: screenWidth * 0.05, // 2.5% of screen width
     borderRadius: screenWidth * 0.025, // 2.5% of screen width
     alignItems: "center",
     justifyContent: "center",
@@ -144,6 +142,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
+    padding:5
   },
   filterItem: {
     flex: 1,
@@ -152,19 +151,16 @@ const styles = StyleSheet.create({
   filterTitle: {
     fontSize: screenWidth * 0.04, // 4% of screen width
     fontWeight: "bold",
-    color: COLORS.primary,
+    color: COLORS.green,
     marginBottom: 8, // Space between label and dropdown
   },
   dropdown: {
-    backgroundColor: COLORS.primary,
-    opacity: 0.6,
+    backgroundColor: COLORS.green,
     borderRadius: 8,
     padding: 7,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
   },
   dropdownList: {
     opacity: 0.5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.green,
   },
 });

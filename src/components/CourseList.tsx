@@ -1,229 +1,263 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import Icon from "react-native-vector-icons/FontAwesome";
-import { COLORS } from "../colors/Colors";
-import Icon2 from "react-native-vector-icons/FontAwesome5";
-import { useNavigation } from "@react-navigation/native";
+import React from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Alert,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import { COLORS } from "../colors/Colors";
+import { useNavigation } from "@react-navigation/native";
+import { Class, Course } from "@/types/Types";
+import { Buffer } from "buffer"; // Import Buffer if it's not already available
+import WebViewBottomSheet from "./WebBottomModal";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
-export const CourseList = ({ 
-  courses, 
-  handlePress, 
-  getHashColor, 
+export const CourseList = ({
+  courses,
+  getHashColor,
   refreshControl,
-  EmptyState 
+  EmptyState,
+}: {
+  courses: Course[] | Class[];
 }) => {
   if (courses.length === 0) {
     return <EmptyState />;
   }
+
   const navigation = useNavigation<any>();
-  const CopyButton = React.memo(({ text }: { text: string }) => {
-    const [copied, setCopied] = React.useState(false);
+  const [bottomSheetVisible, setBottomSheetVisible] = React.useState(false);
+  const [webUrl, setWebUrl] = React.useState(""); // State to keep track of the URL
 
-    const handleCopy = async (str: string) => {
-      try {
-        await Clipboard.setStringAsync(str);
-        setCopied(true);
-        setTimeout(() => {
-          setCopied(false);
-        }, 1000);
-      } catch (error) {
-        console.error("Failed to copy text:", error);
-      }
-    };
+  const handleOpenBottomSheet = (url) => {
+    setWebUrl(url); // Set the URL to be loaded in the WebView
+    setBottomSheetVisible(true);
+  };
 
-    return (
-      <View style={{ alignItems: "center" }}>
-        <TouchableOpacity
-          style={{
-            alignSelf: "center",
-            backgroundColor: COLORS.primary,
-            paddingHorizontal: 5,
-            paddingVertical: 2,
-            borderRadius: 5,
-            borderWidth: 1,
-          }}
-          onPress={() => handleCopy(text)}
-        >
-          <Text
-            style={{
-              color: COLORS.secondary,
-              fontWeight: "bold",
-              textDecorationLine: "underline",
-            }}
-          >
-            {text}{" "}
-            {copied ? ( // Show the clipboard-check icon only for the copied item
-              <Icon2 name="clipboard-check" />
-            ) : (
-              <Icon2 name="clipboard" />
-            )}
-          </Text>
-        </TouchableOpacity>
-        {copied && (
-          <Text
-            style={{
-              marginTop: 5,
-              color: COLORS.green, // Use a color for the success message
-              fontWeight: "bold",
-            }}
-          >
-            Copied to clipboard!
-          </Text>
-        )}
-      </View>
-    );
-  });
+  const handleCloseBottomSheet = () => {
+    setBottomSheetVisible(false);
+  };
+
+  const handlePress = (quarterId, classNbr) => {
+    // Construct the class_data string
+    const classData = `a:2:{s:5:":STRM";s:4:"${quarterId}";s:10:":CLASS_NBR";s:5:"${classNbr}";}`;
+
+    // Encode classData in Base64
+    const encodedClassData = Buffer.from(classData).toString("base64");
+
+    // Construct the full URL
+    const url = `https://pisa.ucsc.edu/class_search/index.php?action=detail&class_data=${encodedClassData}`;
+
+    // Log the IDs for debugging (optional)
+    console.log(quarterId, classNbr);
+
+    // Instead of navigation, open the bottom sheet
+    handleOpenBottomSheet(url);
+  };
+  const copyToClipboard = (courseCode: string) => {
+    Clipboard.setStringAsync(courseCode);
+    Alert.alert("Copied to Clipboard", `${courseCode} copied to clipboard.`);
+  };
+
   const RMPButton = ({ text }: { text: string }) => {
-    const fullName = text.split(",")[1] + " " + text.split(",")[0];
-    const rmpSearch =text.split(",")[0] + " " + text.split(",")[1];
+    const searchName = text.split(",")[0] + " " + (text.split(",")[2] ?? "");
+
     return (
       <TouchableOpacity
-        style={{
-          alignSelf: "flex-start",
-          backgroundColor: COLORS.primary,
-          paddingHorizontal: 5,
-          paddingVertical: 2,
-          borderRadius: 5,
-          borderWidth: 1,
-        }}
         onPress={() =>
           navigation.navigate("WebViewScreen", {
-            url: `https://www.ratemyprofessors.com/search/professors/1078?q=${rmpSearch}`,
+            url: `https://www.ratemyprofessors.com/search/professors/1078?q=${searchName}`,
             course: "Rate My Prof",
+            search: text,
           })
         }
       >
-        <Text
-          style={{
-            color: COLORS.secondary,
-            fontWeight: "bold",
-            textDecorationLine: "underline",
-          }}
-        >
-          <Icon
-            name="user"
-            size={screenWidth * 0.04}
-            color={COLORS.secondary}
-          />
-          {" " + fullName}
-        </Text>
+        <Text style={styles.instructor}>{text}</Text>
       </TouchableOpacity>
     );
   };
 
-  return (
-    <FlatList
-      data={courses}
-      keyExtractor={(item) => item.class_nbr.toString()}
-      ItemSeparatorComponent={() => (
-        <View style={{ height: 1, backgroundColor: COLORS.primary }} />
-      )}
-      renderItem={({ item, index }) => (
+  const renderCourseItem = ({ item, index }) => (
+    <View style={styles.courseContainer}>
+      <TouchableOpacity onPress={() => handlePress(item.strm, item.class_nbr)}>
+        <Ionicons
+          name="information-circle-outline"
+          size={24}
+          color="gray"
+          style={styles.icon}
+        />
+      </TouchableOpacity>
+      <View style={styles.courseDetails}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={styles.title}>{item.title + " "}</Text>
+          <RMPButton text={item.instructors[0].name} />
+        </View>
+        <View style={styles.codeAndInstructor}>
+          <View style={styles.codeContainer}>
+            <Text
+              style={styles.code}
+            >{`${item.subject}${item.catalog_nbr}`}</Text>
+          </View>
+        </View>
+        <Text
+          style={styles.time}
+        >{`${item.meeting_days} ${item.start_time}-${item.end_time}`}</Text>
+        <Text>{item.location || "Location TBA"}</Text>
+      </View>
+      <Text
+        style={[
+          styles.spots,
+          { color: getHashColor(item.enrl_total, item.enrl_capacity) },
+        ]}
+      >
+        {(Number(item.enrl_capacity) - Number(item.enrl_total)).toString() +
+          "/" +
+          item.enrl_capacity +
+          " left"}
+      </Text>
+      <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={styles.courseItem}
-          onPress={() => handlePress(item.link, item.name)}
+          onPress={() => copyToClipboard(item.class_nbr.toString())}
+          style={styles.copyButton}
         >
-          <View style={styles.courseCode}>
-            <Text style={styles.courseCodeText}>
-              {item.subject + item.catalog_nbr}
-            </Text>
-          </View>
-          <View style={styles.indexContainer}>
-            <Text style={styles.indexText}>{index + 1}.</Text>
-          </View>
-          <View style={styles.courseDetails}>
-            <Text>
-              <Icon
-                name="book"
-                size={screenWidth * 0.04}
-                color={COLORS.primary}
-              />
-              {" " + item.title}
-            </Text>
-            <RMPButton text={item.instructors[0].name} />
-            <Text>
-              <Icon
-                name="calendar"
-                size={screenWidth * 0.04}
-                color={COLORS.primary}
-              />
-              {" " + item.schedule}
-            </Text>
-            <CopyButton text={item.class_nbr.toString()} />
-            <Text style={[
-              styles.availabilityText,
-              { color: getHashColor(item.enrl_total, item.enrl_capacity) }
-            ]}>
-              {(Number(item.enrl_capacity) - Number(item.enrl_total)).toString() + "/" + item.enrl_capacity + " left"}
-            </Text>
-          </View>
-          <Icon
-            name="chevron-right"
-            size={screenWidth * 0.025}
-            color={COLORS.primary}
-            style={styles.chevronIcon}
+          <Ionicons
+            name="clipboard-outline"
+            size={18}
+            color="gray"
+            style={{ marginRight: 5 }}
           />
+          <Text style={styles.copyButtonText}>Copy</Text>
         </TouchableOpacity>
-      )}
-      refreshControl={refreshControl}
-      scrollIndicatorInsets={{
-        top: 0,
-        bottom: screenHeight * 0.02,
-        left: 0,
-        right: -2,
-      }}
-    />
+
+        <TouchableOpacity
+          onPress={() => console.log("Add to cart pressed")}
+          style={styles.addToCartButton}
+        >
+          <Text style={styles.addToCartButtonText}>Add to</Text>
+          <Ionicons name="cart-outline" size={18} color={COLORS.white} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={courses}
+        renderItem={renderCourseItem}
+        keyExtractor={(item) => item.class_nbr.toString()}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={refreshControl}
+        scrollIndicatorInsets={{ top: 20, bottom: 20 }}
+      />
+      <WebViewBottomSheet
+        visible={bottomSheetVisible}
+        url={webUrl}
+        onClose={handleCloseBottomSheet}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  courseItem: {
-    padding: screenWidth * 0.025,
-    backgroundColor: COLORS.secondary,
-    borderRadius: screenWidth * 0.025,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    position: 'relative',
+  listContainer: {
+    paddingBottom: 80,
   },
-  courseCode: {
-    position: 'absolute',
-    top: screenHeight * 0.005,
-    right: screenWidth * 0.025,
-    backgroundColor: COLORS.primary,
-    padding: screenWidth * 0.0125,
-    borderRadius: screenWidth * 0.0125,
+  courseContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
   },
-  courseCodeText: {
-    color: COLORS.secondary,
-    fontWeight: 'bold',
-  },
-  indexContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: screenWidth * 0.025,
-  },
-  indexText: {
-    fontSize: screenWidth * 0.04,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+  icon: {
+    marginRight: 10,
   },
   courseDetails: {
     flex: 1,
+    marginLeft: 10,
   },
-  availabilityText: {
-    fontSize: screenWidth * 0.035,
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    fontWeight: 'bold',
-    fontStyle: 'italic',
+  title: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
-  chevronIcon: {
-    position: 'absolute',
-    right: 0,
-    bottom: screenHeight * 0.05,
+  codeAndInstructor: {
+    flexDirection: "column",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  codeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  code: {
+    fontSize: 14,
+    color: "gray",
+    marginRight: 5,
+  },
+  instructor: {
+    fontSize: 14,
+    color: "#0000EE",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    marginRight: 8,
+  },
+  time: {
+    fontSize: 14,
+    color: "gray",
+  },
+  spots: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  buttonContainer: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    flexDirection: "row",
+  },
+  copyButton: {
+    backgroundColor: COLORS.white,
+    padding: 5,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginRight: 8,
+  },
+  copyButtonText: {
+    fontSize: 12,
+    color: "gray",
+    fontWeight: "bold",
+  },
+  addToCartButton: {
+    backgroundColor: COLORS.green,
+    padding: 5,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  addToCartButtonText: {
+    fontSize: 12,
+    color: COLORS.white,
+    fontWeight: "bold",
+    marginRight: 5,
   },
 });
+
+export default CourseList;

@@ -4,10 +4,47 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from src.services.course import Course
+import concurrent.futures
+import threading
+import time
+
+class WebDriverManager:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.driver_pool = []
+        self.max_drivers = 5 
+
+    def get_driver(self):
+        with self.lock:
+            if self.driver_pool:
+                return self.driver_pool.pop()
+            elif len(self.driver_pool) < self.max_drivers:
+                return self.create_driver()
+            else:
+                return None
+
+    def create_driver(self):
+        chrome_options = Options()
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--headless")
+        return webdriver.Chrome(options=chrome_options)
+
+    def return_driver(self, driver):
+        with self.lock:
+            self.driver_pool.append(driver)
+
+    def close_all(self):
+        with self.lock:
+            for driver in self.driver_pool:
+                driver.quit()
+            self.driver_pool.clear()
+
+driver_manager = WebDriverManager()
 
 def process_page(driver, class_list):
     try:
-        class_rows = WebDriverWait(driver, 1).until(
+        class_rows = WebDriverWait(driver, 10).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'div.panel.panel-default.row'))
         )
 
@@ -62,34 +99,32 @@ def process_page(driver, class_list):
         print(f"Error processing page: {e}")
         return False
 
-def get_courses(ge_choice):
-    chrome_options = Options()
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--headless")
-
-    driver = webdriver.Chrome(options=chrome_options)
-    driver.get("https://pisa.ucsc.edu/class_search/index.php")
+def scrape_courses(ge_choice):
+    driver = driver_manager.get_driver()
+    if not driver:
+        print(f"No available driver for {ge_choice}. Skipping.")
+        return []
 
     class_list = []
 
-
     try:
-        term_dropdown = WebDriverWait(driver, 2).until(
+        driver.get("https://pisa.ucsc.edu/class_search/index.php")
+
+        term_dropdown = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, 'term_dropdown'))
         )
         selected_option = term_dropdown.find_element(By.CSS_SELECTOR, 'option:checked')
-        print("Current Quarter:", selected_option.text)
+        print(f"Current Quarter: {selected_option.text}")
 
-        ge_dropdown = WebDriverWait(driver, 2).until(
+        ge_dropdown = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, 'ge'))
         )
         ge_dropdown.click()
-        WebDriverWait(driver, 2).until(
+        WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, f"//option[@value='{ge_choice}']"))
         ).click()
 
-        submit_button = WebDriverWait(driver, 2).until(
+        submit_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and @value='Search']"))
         )
         submit_button.click()
@@ -99,7 +134,7 @@ def get_courses(ge_choice):
                 break
 
             try:
-                next_button = WebDriverWait(driver, 0).until(
+                next_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//a[contains(@onclick, 'next')]"))
                 )
                 next_button.click()
@@ -107,14 +142,39 @@ def get_courses(ge_choice):
                 break  
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred while scraping {ge_choice}: {e}")
     finally:
-        driver.quit()
+        driver_manager.return_driver(driver)
 
     return class_list
 
+def get_courses(ge_choices):
+    all_courses = []
+    max_retries = 3
+    retry_delay = 5  # seconds
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=driver_manager.max_drivers) as executor:
+        future_to_ge = {executor.submit(scrape_courses, ge): ge for ge in ge_choices}
+        for future in concurrent.futures.as_completed(future_to_ge):
+            ge = future_to_ge[future]
+            for attempt in range(max_retries):
+                try:
+                    courses = future.result()
+                    all_courses.extend(courses)
+                    print(f"Finished scraping {ge} courses. Total courses: {len(courses)}")
+                    break
+                except Exception as exc:
+                    print(f'{ge} generated an exception on attempt {attempt + 1}: {exc}')
+                    if attempt < max_retries - 1:
+                        print(f"Retrying {ge} in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"Failed to scrape {ge} after {max_retries} attempts.")
+
+    driver_manager.close_all()
+    return all_courses
+
 if __name__ == "__main__":
-    ge_choice = "CC"
-    courses = get_courses(ge_choice)
-    for course in courses:
-        print(course)
+    ge_choices = ["CC", "ER", "IM", "MF", "SI", "SR", "TA", "PE-E", "PE-H", "PE-T", "PR-E", "PR-C", "PR-S", "C1", "C2"]
+    courses = get_courses(ge_choices)
+    print(f"Total courses scraped: {len(courses)}")
