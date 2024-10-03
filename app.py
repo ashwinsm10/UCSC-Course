@@ -146,6 +146,9 @@ def get_courses_major(degree_name):
 def get_all_degrees():
     degrees = Degree.query.all()
     return jsonify([degree.name for degree in degrees])
+@app.route('/')
+def index():
+    return "Slug Course API"  
 
 @app.route('/api/courses', methods=['GET'])
 def get_courses_data():
