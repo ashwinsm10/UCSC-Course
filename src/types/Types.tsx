@@ -54,13 +54,14 @@ export interface Class {
   instructors: Instructor[];
 }
 const local = "http://10.0.0.124:5001";
-const ngrok_url = "https://10db-73-116-191-23.ngrok-free.app";
-export const API_URL = `${local}/api/courses`;
-export const LAST_UPDATE_URL = `${local}/api/last_update`;
+const heroku_url = "https://slug-course-69684bb0db46.herokuapp.com";
+const current_url = heroku_url;
+export const API_URL = `${current_url}/api/courses`;
+export const LAST_UPDATE_URL = `${current_url}/api/last_update`;
 export const SEARCH_API_URL =
   "https://my.ucsc.edu/PSIGW/RESTListeningConnector/PSFT_CSPRD/SCX_CLASS_LIST.v1";
-export const MAJOR_API_URL = `${local}/api/courses`;
-export const DEGREE_API_URL = `${local}/api/degrees`
+export const MAJOR_API_URL = `${current_url}/api/courses`;
+export const DEGREE_API_URL = `${current_url}/api/degrees`
 export interface Course {
   code: string;
   link: string;
