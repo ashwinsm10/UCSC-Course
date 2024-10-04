@@ -58,7 +58,7 @@ def get_all_major_courses():
     links = get_links_from_major_links()
     course_list = {}
 
-    with ThreadPoolExecutor(max_workers=5) as executor:  # Example: Using 10 threads
+    with ThreadPoolExecutor(max_workers=1) as executor:  # Example: Using 10 threads
         future_to_degree = {executor.submit(fetch_courses_for_degree, link): link[1] for link in links}
 
         for future in as_completed(future_to_degree):
