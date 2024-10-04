@@ -32,7 +32,10 @@ class WebDriverManager:
 
     def return_driver(self, driver):
         with self.lock:
-            self.driver_pool.append(driver)
+            if len(self.driver_pool) < self.max_drivers:
+                self.driver_pool.append(driver)
+            else:
+                driver.quit()
 
     def close_all(self):
         with self.lock:
@@ -100,14 +103,15 @@ def process_page(driver, class_list):
         return False
 
 def scrape_courses(ge_choice):
-    driver = driver_manager.get_driver()
-    if not driver:
-        print(f"No available driver for {ge_choice}. Skipping.")
-        return []
-
+    driver = None
     class_list = []
 
     try:
+        driver = driver_manager.get_driver()
+        if not driver:
+            print(f"No available driver for {ge_choice}. Skipping.")
+            return []
+
         driver.get("https://pisa.ucsc.edu/class_search/index.php")
 
         term_dropdown = WebDriverWait(driver, 10).until(
@@ -144,14 +148,15 @@ def scrape_courses(ge_choice):
     except Exception as e:
         print(f"An error occurred while scraping {ge_choice}: {e}")
     finally:
-        driver_manager.return_driver(driver)
+        if driver:
+            driver_manager.return_driver(driver)
 
     return class_list
 
 def get_courses(ge_choices):
     all_courses = []
     max_retries = 3
-    retry_delay = 5  # seconds
+    retry_delay = 5  
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=driver_manager.max_drivers) as executor:
         future_to_ge = {executor.submit(scrape_courses, ge): ge for ge in ge_choices}

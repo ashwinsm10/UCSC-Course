@@ -3,7 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Define the order of course types
 COURSE_TYPE_ORDER = [
     "Major Qualification",
     "Lower-Division Courses",
@@ -42,7 +41,6 @@ def scrape_courses_from_page(page_url):
     return courses_by_type
 
 def sort_course_types(course_types):
-    # Create a sorted list of course types based on the defined order
     sorted_types = sorted(course_types.keys(), key=lambda x: (
         COURSE_TYPE_ORDER.index(x) if x in COURSE_TYPE_ORDER else len(COURSE_TYPE_ORDER)
     ))
@@ -58,14 +56,13 @@ def get_all_major_courses():
     links = get_links_from_major_links()
     course_list = {}
 
-    with ThreadPoolExecutor(max_workers=1) as executor:  # Example: Using 10 threads
+    with ThreadPoolExecutor(max_workers=1) as executor:  
         future_to_degree = {executor.submit(fetch_courses_for_degree, link): link[1] for link in links}
 
         for future in as_completed(future_to_degree):
             degree_name = future_to_degree[future]
             try:
                 courses = future.result()
-                # Sort course types based on the predefined order
                 sorted_course_types = sort_course_types(courses[1])
                 
                 sorted_courses_by_type = {course_type: courses[1][course_type] for course_type in sorted_course_types}
