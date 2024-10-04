@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FilterBottomSheet } from "../FilterBottomSheet";
 import { Course } from "@/types/Types";
 import WebViewBottomSheet from "../WebBottomModal";
+
 export const GECourses = ({ navigation, route }) => {
   const { category } = route.params;
   const [search, setSearch] = useState("");
@@ -27,8 +28,13 @@ export const GECourses = ({ navigation, route }) => {
   const [availabilityFilter, setAvailabilityFilter] = useState("All");
   const [classTypeFilter, setClassTypeFilter] = useState("All");
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
-  const [webUrl, setWebUrl] = useState(""); // State to keep track of the URL
-  const handleOpenBottomSheet = (url:string) => {
+  const [webUrl, setWebUrl] = useState("");
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(
+    new Set()
+  );
+  const [allExpanded, setAllExpanded] = useState(false);
+
+  const handleOpenBottomSheet = (url: string) => {
     if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
       console.warn("Invalid URL format");
       return;
@@ -39,6 +45,27 @@ export const GECourses = ({ navigation, route }) => {
 
   const handleCloseBottomSheet = () => {
     setBottomSheetVisible(false);
+  };
+
+  const toggleCourseExpansion = (courseCode: string) => {
+    setExpandedCourses((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(courseCode)) {
+        newSet.delete(courseCode);
+      } else {
+        newSet.add(courseCode);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllCourses = () => {
+    if (allExpanded) {
+      setExpandedCourses(new Set());
+    } else {
+      setExpandedCourses(new Set(filteredCourses.map((course) => course.code)));
+    }
+    setAllExpanded(!allExpanded);
   };
 
   const {
@@ -57,7 +84,7 @@ export const GECourses = ({ navigation, route }) => {
 
   const filterCourses = useCallback(() => {
     if (!courses) return [];
-    return courses.filter((course:Course) => {
+    return courses.filter((course: Course) => {
       const matchesSearch =
         course.name.toLowerCase().includes(search.toLowerCase()) ||
         course.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -105,56 +132,87 @@ export const GECourses = ({ navigation, route }) => {
   );
 
   const renderCourseItem = useCallback(
-    ({ item }: { item: Course }) => (
-      <View style={styles.courseContainer}>
-        <TouchableOpacity onPress={() => handleOpenBottomSheet(item.link)}>
-          <Ionicons
-            name="information-circle-outline"
-            size={24}
-            color="gray"
-          />
-        </TouchableOpacity>
-        <View style={styles.courseDetails}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={styles.title}>{item.name + " "}</Text>
-            <RMPButton text={item.instructor} />
-          </View>
-          <View style={styles.codeAndInstructor}>
-            <View style={styles.codeContainer}>
-              <Text style={styles.code}>{item.code}</Text>
+    ({ item }: { item: Course }) => {
+      const isExpanded = expandedCourses.has(item.code);
+
+      return (
+        <TouchableOpacity onPress={() => toggleCourseExpansion(item.code)}>
+          <View style={styles.courseContainer}>
+          <TouchableOpacity
+              onPress={() => handleOpenBottomSheet(item.link)}
+              style={styles.infoIcon}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={24}
+                color="gray"
+              />
+            </TouchableOpacity>
+            
+            <View style={styles.courseDetails}>
+              
+              <View style={styles.courseTitleRow}>
+                
+                <Text style={styles.title}>{item.name}</Text>
+              </View>
+              <RMPButton text={item.instructor} />
+              {isExpanded && (
+                <>
+                  <Text style={styles.code}>{item.code}</Text>
+                  <Text style={styles.time}>{item.schedule}</Text>
+                  <View style={styles.locationRow}>
+                    <Text style={styles.time}>{item.location}</Text>
+                    <View style={styles.buttonContainer}>
+                      <TouchableOpacity
+                        onPress={() =>
+                          copyToClipboard(item.enroll_num.toString().trim())
+                        }
+                        style={styles.copyButton}
+                      >
+                        <Ionicons
+                          name="clipboard-outline"
+                          size={18}
+                          color="gray"
+                          style={{ marginRight: 5 }}
+                        />
+                        <Text style={styles.copyButtonText}>Copy</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() =>
+                          Alert.alert("Not Implemented", "Coming soon...")
+                        }
+                        style={styles.addButton}
+                      >
+                        <Text style={styles.addButtonText}>Add to</Text>
+                        <Ionicons
+                          name="cart-outline"
+                          size={18}
+                          color={COLORS.white}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  {category === "AnyGE" && (
+                    <Text style={styles.time}>{item.ge}</Text>
+                  )}
+                </>
+              )}
+            </View>
+            <View style={styles.spotsContainer}>
+              <Text
+                style={[
+                  styles.spots,
+                  { color: getHashColor(item.class_count) },
+                ]}
+              >
+                {calculateSpotsLeft(item.class_count)} left
+              </Text>
             </View>
           </View>
-          <Text style={styles.time}>{item.schedule}</Text>
-          <Text style={styles.time}>{item.location}</Text>
-          {category === "AnyGE" && <Text style={styles.time}>{item.ge}</Text>}
-        </View>
-        <Text style={[styles.spots, { color: getHashColor(item.class_count) }]}>
-          {calculateSpotsLeft(item.class_count)} left
-        </Text>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            onPress={() => copyToClipboard(item.enroll_num.toString().trim())}
-            style={styles.copyButton}
-          >
-            <Ionicons
-              name="clipboard-outline"
-              size={18}
-              color="gray"
-              style={{ marginRight: 5 }}
-            />
-            <Text style={styles.copyButtonText}>Copy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => Alert.alert("Not Implemented", "Coming soon...")}
-            style={styles.addButton}
-          >
-            <Text style={styles.addButtonText}>Add to</Text>
-            <Ionicons name="cart-outline" size={18} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    ),
-    [navigation, category, copyToClipboard, RMPButton]
+        </TouchableOpacity>
+      );
+    },
+    [navigation, category, copyToClipboard, RMPButton, expandedCourses]
   );
 
   if (isLoading) return <ActivityIndicator size="large" />;
@@ -183,9 +241,19 @@ export const GECourses = ({ navigation, route }) => {
           onChangeText={setSearch}
         />
       </View>
-      <Text style={styles.lastUpdated}>
-        Last Updated: {lastUpdated ? getTimeAgo(lastUpdated) : "Just now"}
-      </Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.lastUpdated}>
+          Last Updated: {lastUpdated ? getTimeAgo(lastUpdated) : "Just now"}
+        </Text>
+        <TouchableOpacity
+          onPress={toggleAllCourses}
+          style={styles.expandAllButton}
+        >
+          <Text style={styles.expandAllButtonText}>
+            {allExpanded ? "Collapse All" : "Expand All"}
+          </Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={filteredCourses}
         renderItem={renderCourseItem}
@@ -280,10 +348,26 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 16,
   },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 15,
+    marginBottom: 10,
+  },
   lastUpdated: {
-    marginLeft: 15,
     color: "gray",
     fontSize: 14,
+  },
+  expandAllButton: {
+    backgroundColor: COLORS.green,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  expandAllButtonText: {
+    color: COLORS.white,
+    fontWeight: "bold",
   },
   courseContainer: {
     flexDirection: "row",
@@ -293,50 +377,53 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
   },
+  infoIcon: {
+    marginRight: 10,
+  },
   courseDetails: {
     flex: 1,
-    marginLeft: 10,
+  },
+  courseTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   title: {
     fontSize: 16,
     fontWeight: "bold",
   },
-  codeAndInstructor: {
-    flexDirection: "column",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  codeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   code: {
     fontSize: 14,
     color: "gray",
-    marginRight: 5,
+    marginTop: 5,
   },
   instructor: {
     fontSize: 14,
     color: "#0000EE",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    marginRight: 8,
   },
   time: {
     fontSize: 14,
     color: "gray",
+    marginTop: 2,
+  },
+  locationRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  spotsContainer: {
+    position: "absolute",
+    right: 15,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
   },
   spots: {
     fontSize: 14,
-    color: "black",
     fontWeight: "bold",
   },
   buttonContainer: {
-    position: "absolute",
-    right: 10,
-    bottom: 10,
     flexDirection: "row",
   },
   copyButton: {
@@ -381,6 +468,7 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: "center",
     borderRadius: 30,
+    flexDirection: "row",
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -388,9 +476,10 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   myButtonText: {
-    color: "white",
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: "bold",
+    marginRight: 5,
   },
   listContainer: {
     paddingBottom: 80,

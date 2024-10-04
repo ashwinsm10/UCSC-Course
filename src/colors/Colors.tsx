@@ -1,5 +1,5 @@
 export const COLORS = {
-  background: "#FAFAFA", // Set this to the desired background color
+  background: "#FAFAFA", 
   primary: "#0072C6",
   secondary: "#F5F5F5",
   text: "#1A1A1A",
@@ -10,7 +10,7 @@ export const COLORS = {
   orange: "#FFA500",
   green: "#00B16A",
   white: "white",
-  black: "black",
+  black: "#1C1C1C" ,
   blue: "#0000EE",
   skyblue: "#87CEEB",
   title: "#00458C",

@@ -11,7 +11,16 @@ import {
 import { Image } from "expo-image";
 import { COLORS } from "@/colors/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
+import { NavigationProp } from "@react-navigation/native";
+
+type NavProps = {
+  navigation: NavigationProp<any>;
+};
+type ImageProps = {
+  image: number;
+  key: string;
+};
+const { width: screenWidth } = Dimensions.get("window");
 
 const data = [
   { key: "CC", image: require("../../assets/cc.webp") },
@@ -32,7 +41,7 @@ const data = [
   { key: "AnyGE", image: require("../../assets/anyge.webp") },
 ];
 
-const MyUCSCGrid = ({ navigation }) => {
+const MyUCSCGrid = ({ navigation }: NavProps) => {
   const [showImages, setShowImages] = useState(true);
 
   useEffect(() => {
@@ -53,7 +62,7 @@ const MyUCSCGrid = ({ navigation }) => {
     setShowImages((prev) => !prev);
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: ImageProps }) => (
     <TouchableOpacity
       style={styles.item}
       onPress={() => navigation.navigate("GECourses", { category: item.key })}
@@ -89,6 +98,7 @@ const MyUCSCGrid = ({ navigation }) => {
         contentContainerStyle={styles.flatList}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
+        style={styles.flatListStyle}
       />
     </View>
   );
@@ -97,32 +107,38 @@ const MyUCSCGrid = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginHorizontal: 5, // Margin of 10 from left and right
     backgroundColor: COLORS.white,
+    padding: 0,
   },
   flatList: {
     justifyContent: "center",
+    backgroundColor: COLORS.white,
+  },
+  flatListStyle: {
+    width: "100%",
+    padding: 0,
+    margin: 0,
   },
   item: {
     flex: 1,
-    marginVertical: 5, // Margin top and bottom 5
-    marginHorizontal: 5, // Margin left and right 5
-    alignItems: "center", // Center items in the grid
+    marginVertical: 5,
+    marginHorizontal: 5,
+    alignItems: "center",
     justifyContent: "center",
-    position: "relative", // For absolute positioning of the text
+    position: "relative",
   },
   image: {
-    width: (screenWidth - 30) / 2, // Subtract total margins and divide by 2 for square image
-    height: (screenWidth - 30) / 3, // Same as width to ensure square
+    width: (screenWidth - 30) / 2,
+    height: (screenWidth - 30) / 3,
     borderRadius: 10,
   },
   text: {
     position: "absolute",
-    bottom: 10, // Align the text to the bottom-left of the image
+    bottom: 10,
     left: 10,
     fontSize: 16,
     fontWeight: "bold",
-    color: "#fff", // White color to contrast with the image
+    color: "#fff",
     shadowColor: "#171717",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
@@ -131,7 +147,7 @@ const styles = StyleSheet.create({
   placeholder: {
     width: (screenWidth - 30) / 2,
     height: (screenWidth - 30) / 3,
-    backgroundColor: COLORS.green, // Or any other color you prefer
+    backgroundColor: COLORS.green,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -140,7 +156,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     fontSize: 16,
     fontWeight: "bold",
-    color: "#fff", // White color to contrast with the image
+    color: "#fff",
     shadowColor: "#171717",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,

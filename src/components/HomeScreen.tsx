@@ -1,5 +1,5 @@
-import { COLORS } from '@/colors/Colors';
-import React, { useState, useRef } from 'react';
+import { COLORS } from "@/colors/Colors";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,17 +8,20 @@ import {
   StyleSheet,
   Animated,
   Keyboard,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import { NavigationProp } from "@react-navigation/native";
 
-export const HomeScreen = ({ navigation }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+type Props = {
+  navigation: NavigationProp<any>;
+};
+export const HomeScreen = ({ navigation }: Props) => {
+  const [searchTerm, setSearchTerm] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   const handleSearchSubmit = () => {
-    navigation.navigate('ClassSearchResult', { search: searchTerm });
+    navigation.navigate("ClassSearchResult", { search: searchTerm });
   };
 
   const handleFocus = () => {
@@ -41,7 +44,7 @@ export const HomeScreen = ({ navigation }) => {
 
   const handleCancelPress = () => {
     setIsFocused(false);
-    setSearchTerm('');
+    setSearchTerm("");
     Keyboard.dismiss();
   };
 
@@ -55,10 +58,10 @@ export const HomeScreen = ({ navigation }) => {
       <Text style={styles.welcomeText}>Welcome to SlugCourse!</Text>
 
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={COLORS.gray} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Python, CSE 13s, BIOL 15..."
+          placeholderTextColor={COLORS.gray}
           returnKeyType="search"
           onSubmitEditing={handleSearchSubmit}
           onFocus={handleFocus}
@@ -67,7 +70,12 @@ export const HomeScreen = ({ navigation }) => {
           onChangeText={setSearchTerm}
         />
         {isFocused && (
-          <Animated.View style={[styles.cancelButtonContainer, { transform: [{ translateX: buttonTranslateX }] }]}>
+          <Animated.View
+            style={[
+              styles.cancelButtonContainer,
+              { transform: [{ translateX: buttonTranslateX }] },
+            ]}
+          >
             <TouchableOpacity onPress={handleCancelPress}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
@@ -77,14 +85,14 @@ export const HomeScreen = ({ navigation }) => {
 
       <TouchableOpacity
         style={[styles.button, styles.geButton]}
-        onPress={() => navigation.navigate('GESelect')}
+        onPress={() => navigation.navigate("GESelect")}
       >
         <Text style={styles.buttonText}>GE Search</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.button, styles.majorButton]}
-        onPress={() => navigation.navigate('MajorRequirementsClassSearch')}
+        onPress={() => navigation.navigate("MajorRequirementsClassSearch")}
       >
         <Text style={styles.buttonText}>Major Requirements Class Search</Text>
       </TouchableOpacity>
@@ -102,32 +110,29 @@ export const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
     backgroundColor: COLORS.white,
   },
   welcomeText: {
     color: COLORS.title,
     fontSize: 26,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 40,
     marginBottom: 20,
   },
   searchContainer: {
-    width: '100%',
+    width: "100%",
     marginBottom: 20,
     borderRadius: 10,
     backgroundColor: COLORS.lightGray,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  searchIcon: {
-    paddingLeft: 15,
   },
   searchInput: {
     flex: 1,
@@ -137,7 +142,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   cancelButtonContainer: {
-    position: 'absolute',
+    position: "absolute",
     right: -20,
   },
   cancelButtonText: {
@@ -147,11 +152,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   button: {
-    width: '100%',
+    width: "100%",
     paddingVertical: 15,
     borderRadius: 25,
     marginBottom: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   geButton: {
     backgroundColor: COLORS.green,
@@ -162,15 +167,15 @@ const styles = StyleSheet.create({
   buttonText: {
     color: COLORS.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   findText: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginVertical: 20,
   },
   instructionsText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 16,
     color: COLORS.gray,
     paddingHorizontal: 30,

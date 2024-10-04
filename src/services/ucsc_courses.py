@@ -84,6 +84,7 @@ def process_page(driver, class_list):
             location_div = row.find_elements(By.CSS_SELECTOR, 'div.col-xs-6.col-sm-6')[0]
             location = location_div.text.replace('\n',' ')
             location = location.replace("Location: ","")
+            location = location.split(":")[1]
 
             class_list.append(Course(
                 code=class_code,

@@ -29,6 +29,7 @@ const App = () => {
               headerTitle: "",
               headerStyle: { height: screenHeight * 0.125 },
               headerShadowVisible: false, // This will remove the shadow on Android
+
             }}
           />
 

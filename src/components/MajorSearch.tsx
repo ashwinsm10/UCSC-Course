@@ -15,16 +15,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { DEGREE_API_URL } from "@/types/Types";
 import { COLORS } from "@/colors/Colors";
 import { useQuery } from "@tanstack/react-query";
-
+import { NavigationProp } from "@react-navigation/native";
 const fetchMajors = async () => {
   const response = await fetch(DEGREE_API_URL);
   if (!response.ok) throw new Error("Network response was not ok");
   return response.json();
 };
+type Props = {
+  navigation: NavigationProp<any>;
+};
 
-export const MajorRequirementsClassSearch = ({ navigation }) => {
+export const MajorRequirementsClassSearch = ({ navigation }: Props) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const fadeAnim = useRef(new Animated.Value(1)).current; // Start with opacity 1
 
   const {
     data: majors,
@@ -34,14 +36,6 @@ export const MajorRequirementsClassSearch = ({ navigation }) => {
   } = useQuery({
     queryKey: ["majors"],
     queryFn: fetchMajors,
-
-    onSuccess: () => {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    },
   });
 
   useFocusEffect(
@@ -52,13 +46,13 @@ export const MajorRequirementsClassSearch = ({ navigation }) => {
   );
 
   const filteredMajors = majors
-    ? majors.filter((major) =>
+    ? majors.filter((major: string) =>
         major.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : [];
 
   const renderItem = useCallback(
-    ({ item }) => (
+    ({ item }: { item: string }) => (
       <TouchableOpacity
         style={styles.majorItem}
         onPress={() => navigation.navigate("MajorPlanner", { degree: item })}
@@ -119,7 +113,6 @@ export const MajorRequirementsClassSearch = ({ navigation }) => {
             renderItem={renderItem}
             keyExtractor={(item, index) => index.toString()}
             contentContainerStyle={styles.listContainer}
-            style={{ opacity: fadeAnim }}
           />
         )}
       </KeyboardAvoidingView>
@@ -144,6 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: COLORS.primary,
+    marginTop: 16,
     marginBottom: 16,
     marginHorizontal: 16,
   },
@@ -153,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.lightGray,
     borderRadius: 8,
     paddingHorizontal: 10,
-    marginBottom:8,
+    marginBottom: 8,
     marginHorizontal: 16,
   },
   searchIcon: {

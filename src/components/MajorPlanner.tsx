@@ -15,6 +15,7 @@ import { COLORS } from "@/colors/Colors";
 import { customCategoryOrder, MAJOR_API_URL } from "@/types/Types";
 import { CourseList } from "./CourseList";
 import { fetchClassesBySubjectAndNumber } from "./GetClassSearchData";
+import Icon from "react-native-vector-icons/Ionicons";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -23,14 +24,13 @@ export const MajorPlanner = ({ route, navigation }) => {
   const [courses, setCourses] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [expandedCourse, setExpandedCourse] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
   const [courseList, setCourseList] = useState([]);
   const [courseLoading, setCourseLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCourses, setExpandedCourses] = useState({});
 
-  const sortCategories = (categories) => {
+  const sortCategories = (categories: string[]) => {
     return categories.sort((a, b) => {
       const indexA = customCategoryOrder.indexOf(a);
       const indexB = customCategoryOrder.indexOf(b);
@@ -213,7 +213,24 @@ export const MajorPlanner = ({ route, navigation }) => {
             <Text style={styles.emptyState}>No courses available</Text>
           }
         />
-        
+        <TouchableOpacity
+          style={styles.myButton}
+          onPress={() =>
+            navigation.navigate("WebViewScreen", {
+              url: "https://my.ucsc.edu/",
+              search: "MyUCSC",
+            })
+          }
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={styles.myButtonText}>Go to MyUCSC</Text>
+            <Icon
+              name="arrow-forward"
+              size={20}
+              style={{ color: COLORS.white }}
+            />
+          </View>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -291,7 +308,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   courseContainer: {
-    marginTop:8,
+    marginTop: 8,
     marginBottom: 8,
     backgroundColor: COLORS.white,
     borderRadius: 8,
@@ -313,8 +330,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: COLORS.black,
   },
-  expandedCourseContent: {
-  },
+  expandedCourseContent: {},
   emptyState: {
     textAlign: "center",
     fontSize: 16,
@@ -336,5 +352,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.red,
     textAlign: "center",
+  },
+  myButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    backgroundColor: "green",
+    padding: 15,
+    alignItems: "center",
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+  },
+  myButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
