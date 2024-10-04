@@ -54,7 +54,7 @@ export interface Class {
   instructors: Instructor[];
 }
 const local = "http://10.0.0.124:5001";
-const heroku_url = "https://slug-course-69684bb0db46.herokuapp.com";
+const heroku_url = "https://web-production-04ff.up.railway.app";
 const current_url = heroku_url;
 export const API_URL = `${current_url}/api/courses`;
 export const LAST_UPDATE_URL = `${current_url}/api/last_update`;
