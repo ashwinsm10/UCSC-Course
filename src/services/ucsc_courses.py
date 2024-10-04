@@ -12,7 +12,7 @@ class WebDriverManager:
     def __init__(self):
         self.lock = threading.Lock()
         self.driver_pool = []
-        self.max_drivers = 5 
+        self.max_drivers = 10
 
     def get_driver(self):
         with self.lock:
