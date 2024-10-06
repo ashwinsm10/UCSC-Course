@@ -53,9 +53,9 @@ export interface Class {
   enrl_total: string;
   instructors: Instructor[];
 }
-const local = "http://10.0.0.124:5001";
+const local = "http://192.168.0.198:5001";
 const heroku_url = "https://web-production-04ff.up.railway.app";
-const current_url = heroku_url;
+const current_url = local;
 export const API_URL = `${current_url}/api/courses`;
 export const LAST_UPDATE_URL = `${current_url}/api/last_update`;
 export const SEARCH_API_URL =

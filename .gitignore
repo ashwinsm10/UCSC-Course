@@ -2,8 +2,6 @@
 
 # dependencies
 node_modules/
-src/App.tsx
-app.py/
 # Expo
 .expo/
 dist/
