@@ -1,4 +1,3 @@
-import atexit
 from flask_cors import CORS
 from flask import Flask, jsonify, request
 from apscheduler.schedulers.background import BackgroundScheduler
